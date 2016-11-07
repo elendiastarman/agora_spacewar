@@ -477,3 +477,74 @@ function enc(e){
 function dec(e){
 	return decodeURIComponent(escape(atob(unescape(e).replace(/-/g,"+").replace(/_/g,"/"))));
 }
+
+var queryOutput;
+
+function run_code(){
+    var runsql = jQuery('#run-sql').prop('checked');
+    var runjs = jQuery('#run-js').prop('checked');
+    var error;
+    
+    if(runsql){
+		jQuery('#run-button').prop('disabled',true);
+        jQuery('#qout').html("Query output: <em>running...</em>");
+        
+        jQuery.ajax({
+            url: '/api/query',
+            type: 'post',
+            data: {'query':jQuery('#sql').val()},//, 'javascript':jQuery('#javascript').val()},
+            dataType: 'html',
+            success: function(response) {
+                jQuery('#run-button').prop('disabled',false);
+                jQuery('#query-output').children().remove();
+                jQuery('#qout').html("Query output: <em>done!</em>");
+                
+                var data = JSON.parse(response);
+                error = data['error']
+                
+                if(error === ''){
+                    jQuery('#query-output').append(jQuery(data['results_html']));
+                    sorttable.makeSortable(document.getElementById('query-table'));
+                    
+                    // if(location.pathname.substring(0,7) !== '/tnbde/') {
+                        // location.pathname = '/tnbde/#'+data['filename'];
+                    // } else {
+                        // location.hash = '#'+data['filename'];
+                    // }
+                    
+                    // jQuery('#permalink').attr('href', location.href);
+                    // jQuery('#permalink').prop('hidden', false);
+                    
+                    queryOutput = JSON.parse(data['results_json']);
+                    
+                    if(runjs){
+                        jQuery('#viz').children().remove();
+                        Function(jQuery("#javascript").val())();
+                    }
+                } else {
+                    jQuery('#query-output').append(jQuery('<pre class="error">'+escapeHtml(data['error'])+'</pre>'));
+                }
+            },
+            failure: function(response) {
+                jQuery('#run-button').prop('disabled',false);
+                jQuery('#query-output').append(jQuery('<p>Something went wrong! :(</p>'));
+            }
+        });
+    } else if(runjs){
+        jQuery('#viz').children().remove();
+        Function(jQuery("#javascript").val())();
+    }
+}
+
+function setVisCode(){
+    window["visualize"] = new Function(jQuery("#javascript").val());
+}
+
+function escapeHtml(unsafe) {
+    return unsafe
+         .replace(/&/g, "&amp;")
+         .replace(/</g, "&lt;")
+         .replace(/>/g, "&gt;")
+         .replace(/"/g, "&quot;")
+         .replace(/'/g, "&#039;");
+ }

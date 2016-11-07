@@ -2,6 +2,8 @@ var SCALE = 1.0;
 var gameOver = 0;
 var gameInfo = {};
 
+var events = [];
+
 window["red"] = {"color":"red"};
 window["blue"] = {"color":"blue"};
 var teams = [window["red"], window["blue"]];
@@ -35,6 +37,7 @@ var missileTimeout = 75; //75 frames, 2250 ms;
 var missileSpeed = 10;
 var fireRateLimit = 4; //3 frames, 120 ms
 var missileMax = 20;
+var numMissiles = 0;
 
 var gravityStrength = 1*5000;
 var speedLimit = 15; //engine propulsion
@@ -131,9 +134,13 @@ function setupGame(start) {
 		teams.forEach(function(ship){
 			ship.score = 0;
 		});
+        
+        events = [];
+        events.push({'type':'game', 'status':'start', 'frame':frameCount});
 	}
 	
 	restartFrame = false;
+    events.push({'type':'round', 'status':'start', 'frame':frameCount});
 	
 	red.x = 50;
 	red.y = Math.floor((fieldHeight-100)*Math.random())+50;
@@ -185,8 +192,10 @@ function updateGame() {
 	if (frameCount > gameDuration) {
 		timeLeft.text = "GAME OVER";
 		gameOver = 1;
+        events.push({'type':'game', 'status':'end', 'frame':frameCount});
 		updatePositions(1);
 		updateGraphics(1);
+        sendData();
 		return 1;
 	} else if (restartFrame && frameCount - restartFrame > 100) {
 		setupGame(0);
@@ -198,7 +207,10 @@ function updateGame() {
 		var filteredMissiles = [];
 		for (var i=0; i<missiles.length; i++) {
 			var m = missiles[i];
-			if (frameCount - m.frameNum > missileTimeout){ m.live = false; }
+			if (frameCount - m.frameNum > missileTimeout){
+                m.live = false;
+                events.push({'type':'death', 'team':'missile', 'frame':frameCount, 'mid':m.id, 'mteam':m.team, 'why':'time'});
+            }
 				
 			if (m.live) {
 				filteredMissiles.push(m);
@@ -317,8 +329,10 @@ function updatePositions(debrisOnly) {
 					
 					if (ship.color === "red") {
 						blue.score += 1;
+                        events.push({'type':'score', 'team':'blue', 'frame':frameCount, 'score':blue.score});
 					} else if (ship.color === "blue") {
 						red.score += 1;
+                        events.push({'type':'score', 'team':'red', 'frame':frameCount, 'score':red.score});
 					}
 				}
 				
@@ -463,12 +477,15 @@ function teamMove(team,actions) {
 					break;
 				case "turn right":
 					ship.rot = ship.rot + ship.turnRate;
+                    events.push({'type':'turn', 'team':ship.color, 'frame':frameCount, 'way':'right'});
 					break;
 				case "turn left":
 					ship.rot = ship.rot - ship.turnRate;
+                    events.push({'type':'turn', 'team':ship.color, 'frame':frameCount, 'way':'left'});
 					break;
 				case "hyperspace":
 					ship.hyperFrame = frameCount;
+                    events.push({'type':'hyper', 'team':ship.color, 'frame':frameCount});
 					break;
 			}
 		}
@@ -479,6 +496,7 @@ function teamMove(team,actions) {
 
 function fireEngine(ship) {
 	var speed = ship.xv*ship.xv + ship.yv*ship.yv;
+    events.push({'type':'thrust', 'team':ship.color, 'frame':frameCount});
 	
 	var nxv = ship.xv + ship.thrust*Math.cos(Math.radians(ship.rot-90));
 	var nyv = ship.yv + ship.thrust*Math.sin(Math.radians(ship.rot-90));
@@ -561,6 +579,7 @@ function checkShipSunCollision(ship, checkOnly) {
 					ship.xv *= f;
 					ship.yv *= f;
 					ship.alive = false;
+                    events.push({'type':'death', 'team':ship.color, 'frame':frameCount, 'why':'sun'});
 					return;
 				}
 			}
@@ -633,6 +652,7 @@ function checkShipShipCollision(ship1, ship2) {
 			switch (priority[0]) {
 				case "dead":
 					ship1.alive = false;
+                    events.push({'type':'death', 'team':ship1.color, 'frame':frameCount, 'why':'ship'});
 					break;
 				case "left wing":
 					shipDebris(ship1,"damage right");
@@ -649,6 +669,7 @@ function checkShipShipCollision(ship1, ship2) {
 			switch (priority[1]) {
 				case "dead":
 					ship2.alive = false;
+                    events.push({'type':'death', 'team':ship2.color, 'frame':frameCount, 'why':'ship'});
 					break;
 				case "left wing":
 					shipDebris(ship2,"damage right");
@@ -666,10 +687,12 @@ function checkShipShipCollision(ship1, ship2) {
 			if (priority[0] !== "" && priority[0] !== "dead" && priority[0] !== ship1.shape) {
 				ship1.shape = priority[0];
 				ship1.updateShape = true;
+                events.push({'type':'shape', 'team':ship1.color, 'frame':frameCount, 'shape':priority[0]});
 			}
 			if (priority[1] !== "" && priority[1] !== "dead" && priority[1] !== ship2.shape) {
 				ship2.shape = priority[1];
 				ship2.updateShape = true;
+                events.push({'type':'shape', 'team':ship2.color, 'frame':frameCount, 'shape':priority[1]});
 			}
 			
 			return;
@@ -705,7 +728,9 @@ function fireMissile(ship) {
 	var dis = Math.sqrt(dx*dx+dy*dy);
 	if (dis <= sun.r || checkShipSunCollision(ship,true)) { return; }
 	
-	missiles.push({'x':mx, 'y':my, 'xv':mxv, 'yv':myv, 'frameNum':frameCount, 'live':true, 'id':missiles.length+1});
+	missiles.push({'x':mx, 'y':my, 'xv':mxv, 'yv':myv, 'frameNum':frameCount, 'live':true, 'id':numMissiles, 'team':ship.color});
+    events.push({'type':'fire', 'team':ship.color, 'frame':frameCount, 'mid':numMissiles, 'mteam':ship.color});
+    numMissiles += 1;
 	
 	if (!accelerated) {
 		d3.select("#field").selectAll(".missile")
@@ -729,7 +754,10 @@ function checkMissileCollision(m, obj) {
 			var L2 = [[points[i][0],points[i][1]], [points[(i+1)%len][0],points[(i+1)%len][1]]];
 			var intersection = LineIntersection(L1, L2);
 			
-			if (intersection.length) { m.live = false; }
+			if (intersection.length) {
+                m.live = false;
+                events.push({'type':'death', 'team':'missile', 'frame':frameCount, 'mid':m.id, 'mteam':m.team, 'why':'sun'});
+            }
 		}
 	} else if (obj === "red" || obj === "blue") {
 		var ship = window[obj];
@@ -767,6 +795,7 @@ function checkMissileCollision(m, obj) {
 			
 			if (closestIntersection.length) {
 				m.live = false;
+                events.push({'type':'death', 'team':'missile', 'frame':frameCount, 'mid':m.id, 'mteam':m.team, 'why':'ship'});
 				if (!ship.alive){return;}
 				
 				if (showIntersections) {
@@ -784,6 +813,7 @@ function checkMissileCollision(m, obj) {
 					switch (state) {
 						case "dead":
 							ship.alive = false;
+                            events.push({'type':'death', 'team':ship.color, 'frame':frameCount, 'mid':m.id, 'mteam':m.team, 'why':'missile'});
 							break;
 						case "left wing":
 							shipDebris(ship,"damage right");
@@ -801,6 +831,7 @@ function checkMissileCollision(m, obj) {
 					if (state !== "dead") {
 						ship.shape = state;
 						ship.updateShape = true;
+                        events.push({'type':'shape', 'team':ship.color, 'frame':frameCount, 'shape':ship.shape});
 					}
 				}
 				
@@ -983,4 +1014,108 @@ function shipDebris(ship,kind) {
 			.attr("class","debris")
 			.style("fill",function(d){ return d.color });
 	}
+}
+
+function sendData() {
+    var meta = {"red":redPlayer, "blue":bluePlayer, "gameEnd":events[events.length-1]['frame']};
+    var stats = jQuery.extend(true, {}, {
+        "game":jQuery.extend(true, {}, {"p1wins":0, "p2wins":0, "ties":0, "p1score":0, "p2score":0, "p1missiles":0, "p2missiles":0}),
+        "rounds":[],
+    });
+    
+    // var stats = {};
+    // stats["game"] = {};
+    // stats["game"]["p1wins"] = 0;
+    // stats["game"]["p2wins"] = 0;
+    // stats["game"]["ties"] = 0;
+    // stats["game"]["p1score"] = 0;
+    // stats["game"]["p2score"] = 0;
+    // stats["game"]["p1missiles"] = 0;
+    // stats["game"]["p2missiles"] = 0;
+    // stats["rounds"] = [];
+    
+    // var roundFrames = events.filter(function(x){return x['type']=='round' && x['status']=='start'})
+    // roundFrames.push(events[events.length-1]['frame']); //push the game-end frame
+    // for(var i=0; i<roundFrames.length-1; i++){
+        // meta["rounds"].push([roundFrames[i], roundFrames[i+1]]);
+    // }
+    
+    var roundStart = 0;
+    var roundStatsInit = {"p1win":false, "p2win":false, "tie":false, "p1scored":0, "p2scored":0, "p1missiles":0, "p2missiles":0};
+    var roundStats = jQuery.extend(true, {}, roundStatsInit);
+    
+    for(var i=0; i<events.length; i++){
+        var e = events[i];
+        
+        switch(e['type']){
+            case "round":
+                if(e['frame'] != roundStart){
+                    if(roundStats["p1scored"] > roundStats["p2scored"]){
+                        roundStats["p1win"] = true;
+                        stats["game"]["p1wins"] += 1;
+                    } else if(roundStats["p1scored"] < roundStats["p2scored"]){
+                        roundStats["p2win"] = true;
+                        stats["game"]["p2wins"] += 1;
+                    } else {
+                        roundStats["tie"] = true;
+                        stats["game"]["ties"] += 1;
+                    }
+                    roundStats["frameStart"] = roundStart;
+                    roundStats["frameEnd"] = e['frame']-1;
+                    
+                    stats["rounds"].push(roundStats);
+                    roundStats = jQuery.extend(true, {}, roundStatsInit);
+                    roundStart = e['frame'];
+                }
+                break;
+            case "thrust":
+                break;
+            case "turn":
+                break;
+            case "hyper":
+                break;
+            case "fire":
+                if(e['team'] === "red"){
+                    roundStats["p1missiles"] += 1;
+                    stats["game"]["p1missiles"] += 1;
+                } else if(e['team'] === "blue"){
+                    roundStats["p2missiles"] += 1;
+                    stats["game"]["p2missiles"] += 1;
+                }
+                break;
+            case "death":
+                if(e['team'] === "red"){
+                    roundStats["p2scored"] = 1;
+                } else if(e['team'] === "blue"){
+                    roundStats["p1scored"] = 1;
+                }
+                break;
+            case "shape":
+                break;
+            case "score":
+                if(e['team'] === "red"){
+                    stats["game"]["p1score"] = e['score'];
+                } else if(e['team'] === "blue"){
+                    stats["game"]["p2score"] = e['score'];
+                }
+                break;
+        }
+    }
+    
+    jQuery.ajax({
+		url: '/api/data',
+		type: 'post',
+		data: {'events':JSON.stringify(events),
+               'meta':JSON.stringify(meta),
+               'stats':JSON.stringify(stats),
+               //'achievements':JSON.stringify(achievements),
+			   },
+		dataType: 'html',
+		success: function(response) {
+			console.log(response);
+		},
+		failure: function(response) {
+			console.log(response);
+		}
+	});
 }

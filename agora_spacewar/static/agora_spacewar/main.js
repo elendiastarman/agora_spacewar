@@ -4,9 +4,9 @@ var renderLoop;
 var accelerated = 0;
 (function($){
 	$(document).ready(function (){
-		console.log("main.js");
+		//console.log("main.js");
 		init();
-		setRenderLoopInterval();
+		//setRenderLoopInterval();
 		$('#playfield').focus();
 		$('#playfield').bind("keydown",handleInput);
 		$('#playfield').bind("keyup",handleInput);
@@ -25,6 +25,7 @@ var accelerated = 0;
 		});
 		$('#numGames').on('change', function(){
 			numGames = $(this).val();
+            numGames = Math.max(Math.min(numGames,5),1);
 		});
 		loadFromPermalink();
 	});
@@ -240,6 +241,22 @@ function init() {
 		.attr("font-size","20px")
 		.attr("id","ties")
 		.text("Ties: 0");
+    
+    d3.select("#field").append("g")
+        .attr("id", "clickstart");
+    d3.select("#clickstart").append("rect")
+        .attr("width", fieldWidth)
+        .attr("height", fieldHeight)
+        .attr("fill", "rgb(200,200,200)")
+        .attr("opacity", "0.5")
+        .on("click", function(){console.log(jQuery(this)); jQuery(this).parent().remove(); setRenderLoopInterval()});
+    d3.select("#clickstart").append("text")
+        .attr("x", 400)
+        .attr("y", 70)
+        .attr("text-anchor", "middle")
+        .attr("fill", "white")
+        .attr("font-size", "30px")
+        .text("CLICK TO START");
 	
 	updateHighlights();
 }
@@ -277,7 +294,7 @@ function updateFast() {
 	updateWinText();
 	isDone = 0;
 	
-	if (redWins + blueWins >= numGames) {
+	if (redWins + blueWins + ties >= numGames) {
 		if (!winRecord[redIdx+','+blueIdx]) {
 			winRecord[redIdx+','+blueIdx] = {'rbi':redIdx+','+blueIdx, 'red':{'c':"red", 'i':redIdx, 'w':0}, 'blue':{'c':"blue", 'i':blueIdx, 'w':0}};
 		}
@@ -480,30 +497,46 @@ function dec(e){
 
 var queryOutput;
 
-function run_code(){
-    var runsql = jQuery('#run-sql').prop('checked');
-    var runjs = jQuery('#run-js').prop('checked');
+function run_code(purpose){
+    var runsql = 1;//jQuery('#run-sql').prop('checked');
+    var runjs = 0;//jQuery('#run-js').prop('checked');
     var error;
     
+    var queryText = "";
+    var queryTarget = "";
+    if(purpose === "general"){
+        queryText = jQuery('#sql').val();
+        queryTarget = "#query-output";
+    } else if (purpose === "round-stats"){
+        queryText = "SELECT R.id, \"frameStart\", \"frameEnd\", p1win, p2win, tie, p1missiles, p2missiles, P1.username as \"Red name\", P2.username as \"Blue name\" FROM \"agora_spacewar_round\" R, (SELECT id FROM \"agora_spacewar_game\" ORDER BY id DESC LIMIT 1) as X, \"agora_spacewar_player\" P1, \"agora_spacewar_player\" P2 WHERE R.game_id = X.id AND R.player1_id = P1.id AND R.player2_id = P2.id ORDER BY R.id;";
+        queryTarget = "#round-stats";
+    }
+    
     if(runsql){
-		jQuery('#run-button').prop('disabled',true);
-        jQuery('#qout').html("Query output: <em>running...</em>");
+        if(purpose === "general"){
+            jQuery('#run-button').prop('disabled',true);
+            jQuery('#qout').html("Query output: <em>running...</em>");
+        }
         
         jQuery.ajax({
             url: '/api/query',
             type: 'post',
-            data: {'query':jQuery('#sql').val()},//, 'javascript':jQuery('#javascript').val()},
+            data: {'query':queryText},//, 'javascript':jQuery('#javascript').val()},
             dataType: 'html',
             success: function(response) {
-                jQuery('#run-button').prop('disabled',false);
-                jQuery('#query-output').children().remove();
-                jQuery('#qout').html("Query output: <em>done!</em>");
+                if(purpose === "general"){
+                    jQuery('#run-button').prop('disabled',false);
+                    jQuery('#query-output').children().remove();
+                    jQuery('#qout').html("Query output: <em>done!</em>");
+                }
+                
+                jQuery(queryTarget).children().remove();
                 
                 var data = JSON.parse(response);
                 error = data['error']
                 
                 if(error === ''){
-                    jQuery('#query-output').append(jQuery(data['results_html']));
+                    jQuery(queryTarget).append(jQuery(data['results_html']));
                     sorttable.makeSortable(document.getElementById('query-table'));
                     
                     // if(location.pathname.substring(0,7) !== '/tnbde/') {
@@ -517,28 +550,31 @@ function run_code(){
                     
                     queryOutput = JSON.parse(data['results_json']);
                     
-                    if(runjs){
-                        jQuery('#viz').children().remove();
-                        Function(jQuery("#javascript").val())();
-                    }
+                    // if(runjs){
+                        // jQuery('#viz').children().remove();
+                        // Function(jQuery("#javascript").val())();
+                    // }
                 } else {
-                    jQuery('#query-output').append(jQuery('<pre class="error">'+escapeHtml(data['error'])+'</pre>'));
+                    jQuery(queryTarget).append(jQuery('<pre class="error">'+escapeHtml(data['error'])+'</pre>'));
                 }
             },
             failure: function(response) {
-                jQuery('#run-button').prop('disabled',false);
-                jQuery('#query-output').append(jQuery('<p>Something went wrong! :(</p>'));
+                if(purpose === "general"){
+                    jQuery('#run-button').prop('disabled',false);
+                }
+                
+                jQuery(queryTarget).append(jQuery('<p>Something went wrong! :(</p>'));
             }
         });
-    } else if(runjs){
-        jQuery('#viz').children().remove();
-        Function(jQuery("#javascript").val())();
+    // } else if(runjs){
+        // jQuery('#viz').children().remove();
+        // Function(jQuery("#javascript").val())();
     }
 }
 
-function setVisCode(){
-    window["visualize"] = new Function(jQuery("#javascript").val());
-}
+// function setVisCode(){
+    // window["visualize"] = new Function(jQuery("#javascript").val());
+// }
 
 function escapeHtml(unsafe) {
     return unsafe

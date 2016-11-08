@@ -58,9 +58,13 @@ class Event(models.Model):
     mteam = models.ForeignKey(Player, null=True,blank=True, related_name="missile_events") #the player who fired the missile
     why = models.CharField(max_length=10, null=True,blank=True) #generally for death-related events
 
+class AchievementTemplate(models.Model):
+    name = models.CharField(max_length=30)
+    description = models.CharField(max_length=200)
+
 class Achievement(models.Model):
     player = models.ForeignKey(Player)
-    name = models.CharField(max_length=30)
+    template = models.ForeignKey(AchievementTemplate)
     game = models.ForeignKey(Game)
     round = models.ForeignKey(Round, null=True,blank=True)
     frame = models.IntegerField()

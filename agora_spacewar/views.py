@@ -37,7 +37,19 @@ def main_view(request, *args, **kwargs):
             if filename.endswith('.js'): scripts.append('agora_spacewar/'+plus+filename)
     context['scripts'] = scripts
     
-    context['sql'] = "SELECT * FROM \"agora_spacewar_game\";"
+    context['sql'] = """SELECT R.id, "frameStart", "frameEnd", p1win, p2win, tie, p1missiles, p2missiles,
+       P1.username as "Red name", P2.username as "Blue name"
+
+FROM "agora_spacewar_round" R,
+     (SELECT id FROM "agora_spacewar_game" ORDER BY id DESC LIMIT 1) as X,
+     "agora_spacewar_player" P1,
+     "agora_spacewar_player" P2
+
+WHERE R.game_id = X.id
+  AND R.player1_id = P1.id
+  AND R.player2_id = P2.id
+
+ORDER BY R.id;"""
 
     return render(request, 'agora_spacewar/main.html', context_instance=context)
 
@@ -100,11 +112,13 @@ def api_data_view(request, *args, **kwargs):
     idx = 0
     events_to_create = []
     for event in events:
+        if idx >= len(rounds): idx = len(rounds)-1
         if event["frame"] > rounds[idx].frameEnd:
             idx += 1
         if idx >= len(rounds): idx = len(rounds)-1
         
         e = Event(round=rounds[idx], type=event["type"], frame=event["frame"])
+        
         if "team" in event:
             if event["team"] == "red":
                 e.player = player1
@@ -119,6 +133,20 @@ def api_data_view(request, *args, **kwargs):
                 e.mteam = player1
             elif event["mteam"] == "blue":
                 e.mteam = player2
+        
+        if event["type"] == "achievement":
+            try:
+                at = AchievementTemplate.objects.get(name=event["name"])
+            except ObjectDoesNotExist:
+                at = AchievementTemplate(name=event["name"], description="<need description>")
+                at.save()
+            
+            a = Achievement(template=at, game=game, round=rounds[idx], frame=event["frame"])
+            if event["team"] == "red":
+                a.player = player1
+            elif event["team"] == "blue":
+                a.player = player2
+            a.save()
         
         events_to_create.append(e)
     

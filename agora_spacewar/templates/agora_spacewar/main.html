@@ -27,9 +27,35 @@
 	
 	<body>
 	
-		<h1>PPCG &ndash; Spacewar! King of the Hill</h1>
+		<h1>Agora code test &ndash; using the Spacewar! game</h1>
+        
+        <p>As I understand it, the problem is to design a system whereby individual users of a game are tracked, with gameplay statistics and achievements associated with them. The problem also asked that a developer be able to read, create, and update individual user records. However, I figured that in practice and in most situations, code would do the updating, not humans.
+        
+        <br/><br/>
+        
+        Though the problem statement did not seem to require any functioning code at all, I chose to take the &ndash; presumably &ndash; unusual tack of building a functioning demo in order to <em>show</em>, rather than merely tell of, my design of such a system. As such, this website is my document and it is <em>interactive</em>.
+        
+        <br/><br/>
+        
+        Early on, I realized that in order to demonstrate such a system, I would have to have a good deal of data. In thinking about how to generate this data, I remembered that I had previously worked on a project where I cloned the classic Spacewar! game &ndash; one of the first video games ever &ndash; and ran a King-of-the-Hill contest where bots written by members of the Stack Exchange site Programming Puzzles and Code Golf competed. That is, I already had a game and many AI players, perfect for generating relatively realistic data.
+        
+        <br/><br/>
+        
+        Thus, I used Javascript, jQuery, and D3.js for the front end and Python/Django for the backend, with Postgres as the database engine. The workflow goes like this:
+        
+        <ol>
+            <li>Two bots (or humans) are selected to play a game.</li>
+            <li>During the game, a number of different events are recorded, including round starts, player deaths, and firing missiles, to name a few, along with a couple selected attributes for each, including the frame that the event occurred on. Achievements are considered a type of event here.</li>
+            <li>After the game ends, statistics are calculated for each round and the game as a whole.</li>
+            <li>The raw event data and processed statistics, as well as the identities of the players, are sent to the server backend.</li>
+            <li>The backend updates the database accordingly, creating records as needed.</li>
+            <li>A few data-driven elements on the page are updated.</li>
+        </ol>
+        
+        So, without further ado, I'd like to present the game Spacewar! below and encourage you to play at least one game. By default, the two players are a Red human and a Blue userbot. The userbot player uses the code in two text boxes below the playing field to make its decisions; it is effectively a way for people to test their AI bot. There are also a grid of choices for picking players and a small table below the playing field with the controls for human players for either side. Just click the screen to start the game.
+        </p>
 		
-		<div id="playfield" tabindex="1"></div>
+		<div id="playfield"></div>
 		
 		<table id="action-table">
 			<tr>
@@ -86,58 +112,66 @@
 			<button onclick="clearInterval(renderLoop); renderLoop=false;">Stop the animation!</button>
 			<button onclick="setupGame(0)">Reset</button>
 			<button onclick="setupGame(1)">Restart</button>
-			Gravity? <input type="checkbox" id="gravityCheck" checked></input>
-			Intersections? <input type="checkbox" id="showIntersections"></input>
-			Accelerated? <input type="checkbox" id="accelerated"></input>
+			<!-- Gravity? <input type="checkbox" id="gravityCheck" checked></input> -->
+			<!-- Intersections? <input type="checkbox" id="showIntersections"></input> -->
+			<input type="checkbox" id="accelerated"></input> Accelerated
 			<br/>
-			<button onclick="runAll('all')">Run all pairings</button>
-			<button onclick="runAll('red')">Run all against Red</button>
-			<button onclick="runAll('blue')">Run all against Blue</button>
-			Number of games per pair: <input type="text" id="numGames" size="3" value="20"></input>
+            <div>
+                <button onclick="jQuery(this).parent().children().toggle()">Show advanced controls</button>
+                <div id="advanced-controls" hidden>
+                    <button onclick="runAll('all')">Run all pairings</button>
+                    <button onclick="runAll('red')">Run all against Red</button>
+                    <button onclick="runAll('blue')">Run all against Blue</button>
+                    Number of games per pair: <input type="number" id="numGames" min="1" max="5" value="1" style="width:3em"></input>
+                </div>
+            </div>
 		</p>
 		
 		<br/>
 		
-		<div id="userbot">
-			<pre>function userbot_setup(team) {
+        <div id="showhide-userbot">
+            <button onclick="jQuery('.shub').toggle()"><span class="shub">Show</span><span class="shub" hidden>Hide</span> userbot code</button>
+            <div id="userbot" class="shub" hidden>
+                <pre>function userbot_setup(team) {
     var botVars = {};</pre>
-			<textarea id="userbot-setup" class="codeinput" cols=80 rows=10>botVars["color"] = team;</textarea>
-			<pre>    return botVars;
+                <textarea id="userbot-setup" class="codeinput" cols=80 rows=10>botVars["color"] = team;</textarea>
+                <pre>    return botVars;
 }
 
 function userbot_getActions(gameInfo, botVars) {
     var actions = [];</pre>
-			<textarea id="userbot-getactions" class="codeinput" cols=80 rows=20>if (gameInfo[botVars["color"]+"_alive"]) {
+                <textarea id="userbot-getactions" class="codeinput" cols=80 rows=20>if (gameInfo[botVars["color"]+"_alive"]) {
     if (Math.random() > 0.5) { actions.push("turn right") }
     if (Math.random() > 0.5) { actions.push("fire engine") }
     if (Math.random() > 0.8) { actions.push("fire missile") }
 }</textarea>
-			<pre>    return actions;
+                <pre>    return actions;
 }</pre>
-		</div>
+                
+                <p>
+                    <button id="set-userbot" onclick="setUserBotCode()">Set userbot code</button>
+                    <!-- <button onclick="savePermalink()">Save permalink</button> -->
+                    <!-- <button onclick="loadFromPermalink()">Reload from permalink</button> -->
+                </p>
+            </div>
+        </div>
 		
-		<br/>
-		
-		<p>
-			<button id="set-userbot" onclick="setUserBotCode()">Set userbot code</button>
-			<button onclick="savePermalink()">Save permalink</button>
-			<button onclick="loadFromPermalink()">Reload from permalink</button>
-		</p>
-		
-		<p><strong>Special credit to PhiNotPi and BrainSteel of PPCG for invaluable testing and bug-fixing help, and to CᴏɴᴏʀO'Bʀɪᴇɴ for his contributions to code.</strong></p>
-		
-        <p>Enter your SQL query here:</p>
+		<p>As a quick side note, the user interface has been modified from the original here: <a href="http://play.starmaninnovations.com/spacewar">play.starmaninnovations.com/spacewar</a>. Now, if you played a game earlier, then below you'll see some statistics about the rounds you played in that game.</p>
+        
+        <div id="round-stats" style="overflow:auto; max-height:25em; display:inline-block;"></div>
+        
+        <p>Below is the SQL query used to generate the above table. You may write arbitrary queries here, though only <code>SELECT</code>, <code>INSERT</code>, and <code>UPDATE</code> operations will work. Below this text box is a little documentation detailing the database schema.</p>
         <textarea id="sql">{{sql}}</textarea>
         
-        <p>Optional - JavaScript to be executed on the results:<br/><span color="red"><strong>Beware of running JavaScript code from unknown or untrusted sources.</strong></span></p>
-        <textarea id="javascript">{{js}}</textarea>
+        <!-- <p>Optional - JavaScript to be executed on the results:<br/><span color="red"><strong>Beware of running JavaScript code from unknown or untrusted sources.</strong></span></p>
+        <textarea id="javascript">{{js}}</textarea> -->
         
         <p>
-            <button onclick="run_code()" id="run-button">Run:</button>
-            <input type="checkbox" id="run-sql" name="run-type" checked />
+            <button onclick="run_code('general')" id="run-button">Run:</button>
+            <!-- <input type="checkbox" id="run-sql" name="run-type" checked />
             <label for="run-sql">SQL</label>
             <input type="checkbox" id="run-js" name="run-type" />
-            <label for="run-js">JavaScript</label>
+            <label for="run-js">JavaScript</label> -->
             <!-- <br/>
             <a href="" id="permalink" hidden>Permalink</a> -->
         </p>
@@ -145,18 +179,18 @@ function userbot_getActions(gameInfo, botVars) {
         <p id="qout">Query output:</p>
         <div id="query-output" style="overflow:auto; max-height:25em; display:inline-block;"></div>
         
-        <p>Visualization area:</p>
+        <!-- <p>Visualization area:</p>
         <div id="vizdiv">
             <svg style="border: 1px solid black" id="viz"></svg>
-        </div>
+        </div> -->
         
         <h2>Notes:</h2>
         <ul>
             <li>The underlying database engine is PostgreSQL.</li>
-            <li>Query execution time is currently limited to 10 seconds, and only read-only operations are allowed.</li>
-            <li>There are currently three tables (all prepended with <code>transcriptAnalyzer_</code>, possibly to be fixed later):
+            <li>Query execution time is currently limited to 10 seconds, and only <code>SELECT</code>, <code>INSERT</code>, and <code>UPDATE</code> operations are allowed.</li>
+            <li>There are currently six tables (all prepended with <code>agora_spacewar_</code>):
                 <ul>
-                    <li><code>user</code>, which has two columns: <code>id</code> (internal user id) and <code>uid</code> (SE chat id, auto-linked);</li>
+                    <li><code>player</code>, which has two columns: <code>id</code> (internal user id) and <code>uid</code> (SE chat id, auto-linked);</li>
                     <li><code>username</code>, which has three columns: <code>id</code>, <code>name</code>, and <code>user_id (internal id)</code>;</li>
                     <li><code>message</code>, which has eleven columns:
                         <ul>
@@ -175,16 +209,16 @@ function userbot_getActions(gameInfo, botVars) {
                     </li>
                 </ul>
             </li>
-            <li>Normally, the <code>content</code> column is escaped, so you see the raw HTML. You can name it <code>content_rendered</code> to not escape the HTML, but beware that it will look wrong due to the lack of supporting CSS, images will be at full size, there might be other issues, and finally, may be unsafe.</li>
-            <li>The jQuery (version 1.10.2), D3 (version 4.0), and Plotly (latest version) JavaScript libraries are all available for use.</li>
-            <li>The provided SVG for visualization has an id of "viz".</li>
+            <!-- <li>Normally, the <code>content</code> column is escaped, so you see the raw HTML. You can name it <code>content_rendered</code> to not escape the HTML, but beware that it will look wrong due to the lack of supporting CSS, images will be at full size, there might be other issues, and finally, may be unsafe.</li> -->
+            <!-- <li>The jQuery (version 1.10.2) and D3 (version 4.0) JavaScript libraries are both available for use.</li> -->
+            <!-- <li>The provided SVG for visualization has an id of "viz".</li> -->
             <li>The variable <code>queryOutput</code> contains the query results in JSON format.</li>
         </ul>
 	
 		<script src="https://code.jquery.com/jquery-1.10.2.js"></script>
 		<script src="http://ajax.googleapis.com/ajax/libs/prototype/1.7.3.0/prototype.js"></script>
 		<script src="https://d3js.org/d3.v4.min.js" charset="utf-8"></script>
-        <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+        <!-- <script src="https://cdn.plot.ly/plotly-latest.min.js"></script> -->
 		<script src="{% static 'agora_spacewar/sorttable.js' %}"></script>
 		{% for script in scripts %}
 			<script src="{% static script %}"></script>

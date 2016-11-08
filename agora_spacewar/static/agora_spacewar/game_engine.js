@@ -185,6 +185,9 @@ function setupGame(start) {
 			field.selectAll('.missileHit'+ship.color).remove();
 		});
 	}
+    
+    field.selectAll('.debris').remove();
+    debris = [];
 	updateGraphics(0);
 }
 
@@ -195,11 +198,13 @@ function updateGame() {
         events.push({'type':'game', 'status':'end', 'frame':frameCount});
 		updatePositions(1);
 		updateGraphics(1);
+        checkAchievements();
         sendData();
 		return 1;
 	} else if (restartFrame && frameCount - restartFrame > 100) {
 		setupGame(0);
 		restartFrame = false;
+        checkAchievements();
 		return 0;
 	}
 	
@@ -244,6 +249,8 @@ function updateGame() {
 	gameInfo.blueScore = blue.score;
 	gameInfo.timeLeft = Math.floor((gameDuration - frameCount)/(100/3));
 	
+    checkAchievements();
+    
 	frameCount += 1;
 	return 0;
 }
@@ -755,8 +762,8 @@ function checkMissileCollision(m, obj) {
 			var intersection = LineIntersection(L1, L2);
 			
 			if (intersection.length) {
+                if(m.live){ events.push({'type':'death', 'team':'missile', 'frame':frameCount, 'mid':m.id, 'mteam':m.team, 'why':'sun'}); }
                 m.live = false;
-                events.push({'type':'death', 'team':'missile', 'frame':frameCount, 'mid':m.id, 'mteam':m.team, 'why':'sun'});
             }
 		}
 	} else if (obj === "red" || obj === "blue") {
@@ -1016,6 +1023,174 @@ function shipDebris(ship,kind) {
 	}
 }
 
+function checkAchievements() {
+    for(var k=events.length-1; k>=0; k--){
+        if(frameCount != events[k]["frame"]){
+            events.filter(function(x){return x["frame"] == frameCount && x["type"] == "achievement"}).forEach(function(x){console.log(x["team"]+" earned the achievement "+x["name"]+"!")});
+            return;
+        }
+        
+        var ach = [["Weather the Storm", 1, "", 0],
+                   ["Long Shot", 1],
+                   ["One Shot, One Kill", 1],
+                   ["Survivor", 1],
+                   ["Patient", 1],
+                   ["Last Chance", 1],
+                   ["Dominator", 1, [0,0]],
+                   ["Executor", 1, [0,0]],
+                   ["Head On", 1],
+                   ["Kill from the Grave", 1],
+                   ["Pacifist", 1, [0,0,0,0]],
+        ];
+        
+        for(var j=k; j>=0; j--){
+            var e = events[j];
+            
+            for(var i=0; i<ach.length; i++){
+                
+                switch(ach[i][0]){
+                    case "Weather the Storm": //Outlast all of your opponent’s missiles
+                        if(ach[i][1] == 1){
+                            if(e["type"] === "death" && e["team"] === "missile"){
+                                ach[i][1] = 2;
+                                ach[i][2] = e["mteam"];
+                                ach[i][3] = 1;
+                                // console.log("WtS try: "+(ach[i][2]==="red"?"blue":"red"));
+                            } else {
+                                ach.splice(i,1);
+                                i -= 1;
+                            }
+                        } else if (ach[i][1] == 2){
+                            if(e["type"] === "death" && e["team"] === "missile" && e["mteam"] === ach[i][2]){
+                                ach[i][3] += 1;
+                                // console.log("Missiles weathered: "+ach[i][3]);
+                                
+                                if(ach[i][3] >= missileMax){ //success
+                                    console.log("Storm weathered! "+frameCount+" "+ach[i][3]);
+                                    events.push({"type":"achievement", "team":(ach[i][2]==="red"?"blue":"red"), "frame":frameCount, "name":"Weather the Storm"});
+                                    ach.splice(i,1);
+                                    i -= 1;
+                                }
+                            } else if(e["type"] === "death" && e["team"] !== "missile" && e["team"] !== ach[i][2]){
+                                ach.splice(i,1);
+                                i -= 1;
+                            } else if(e["type"] === "round"){
+                                // console.log("Weather the Storm attempt: "+(ach[i][2]==="red"?"blue":"red")+" outlasted "+ach[i][3]+" missiles.");
+                                ach.splice(i,1);
+                                i -= 1;
+                            }
+                        }
+                        
+                        break;
+                    case "Long Shot": //Make a kill with a missile close to the end of its life span
+                        ach.splice(i,1);
+                        i -= 1;
+                        break;
+                    case "One Shot, One Kill": //Fire only one missile and make a kill with it
+                        ach.splice(i,1);
+                        i -= 1;
+                        break;
+                    case "Survivor": //Win a round by your opponent running into the sun
+                        ach.splice(i,1);
+                        i -= 1;
+                        break;
+                    case "Patient": //Fire missiles no quicker than every five seconds, on average, during a round
+                        ach.splice(i,1);
+                        i -= 1;
+                        break;
+                    case "Last Chance": //Score a kill with your last missile
+                        ach.splice(i,1);
+                        i -= 1;
+                        break;
+                    case "Dominator": //Finish the game with five more points than your opponent
+                        if(ach[i][1] == 1){
+                            if(e["type"] !== "game" || e["status"] !== "end"){
+                                ach.splice(i,1);
+                                i -= 1;
+                            } else {
+                                ach[i][1] = 2;
+                            }
+                        } else if (ach[i][1] == 2){
+                            if(e["type"] === "score"){
+                                if(e["team"] === "red" && ach[i][2][0] == 0){
+                                    ach[i][2][0] = e["score"];
+                                } else if(e["team"] === "blue" && ach[i][2][1] == 0){
+                                    ach[i][2][1] = e["score"];
+                                }
+                                
+                                if(ach[i][2][0] != 0 && ach[i][2][1] != 0){
+                                    if(ach[i][2][0] >= ach[i][2][1]+5){
+                                        events.push({"type":"achievement", "team":"red", "frame":frameCount, "name":"Dominator"});
+                                    } else if(ach[i][2][0]+5 <= ach[i][2][1]){
+                                        events.push({"type":"achievement", "team":"blue", "frame":frameCount, "name":"Dominator"});
+                                    }
+                                    ach.splice(i,1);
+                                    i -= 1;
+                                }
+                            } else if (e["type"] === "game" && e["status"] === "start"){
+                                if(ach[i][2][0] >= ach[i][2][1]+5){
+                                    events.push({"type":"achievement", "team":"red", "frame":frameCount, "name":"Dominator"});
+                                } else if(ach[i][2][0]+5 <= ach[i][2][1]){
+                                    events.push({"type":"achievement", "team":"blue", "frame":frameCount, "name":"Dominator"});
+                                }
+                                ach.splice(i,1);
+                                i -= 1;
+                            }
+                        }
+                        break;
+                    case "Executor": //Finish the game with at least five points while your opponent has none
+                        if(ach[i][1] == 1){
+                            if(e["type"] === "game" || e["status"] === "end"){
+                                ach[i][1] = 2;
+                            } else {
+                                ach.splice(i,1);
+                                i -= 1;
+                            }
+                        } else if (ach[i][1] == 2){
+                            if(e["type"] === "score"){
+                                if(e["team"] === "red" && ach[i][2][0] == 0){
+                                    ach[i][2][0] = e["score"];
+                                } else if(e["team"] === "blue" && ach[i][2][1] == 0){
+                                    ach[i][2][1] = e["score"];
+                                }
+                                
+                                if(ach[i][2][0] != 0 && ach[i][2][1] != 0){
+                                    ach.splice(i,1);
+                                    i -= 1;
+                                }
+                            } else if (e["type"] === "game" && e["status"] === "start"){
+                                if(ach[i][2][0] >= 5 && ach[i][2][1] == 0){
+                                    events.push({"type":"achievement", "team":"red", "frame":frameCount, "name":"Executor"});
+                                } else if(ach[i][2][0] == 0 && ach[i][2][1] >= 5){
+                                    events.push({"type":"achievement", "team":"blue", "frame":frameCount, "name":"Executor"});
+                                }
+                                ach.splice(i,1);
+                                i -= 1;
+                            }
+                        }
+                        break;
+                    case "Head On": //Score a point by colliding with your opponent after all of your missiles are gone
+                        ach.splice(i,1);
+                        i -= 1;
+                        break;
+                    case "Kill from the Grave": //Score a kill with a missile after dying
+                        ach.splice(i,1);
+                        i -= 1;
+                        break;
+                    case "Pacifist": //Win the game without firing a single missile
+                        ach.splice(i,1);
+                        i -= 1;
+                        break;
+                }
+            }
+            
+            if(ach.length == 0){ break; }
+        }
+
+    }
+    
+}
+
 function sendData() {
     var meta = {"red":redPlayer, "blue":bluePlayer, "gameEnd":events[events.length-1]['frame']};
     var stats = jQuery.extend(true, {}, {
@@ -1113,6 +1288,7 @@ function sendData() {
 		dataType: 'html',
 		success: function(response) {
 			console.log(response);
+            run_code("round-stats");
 		},
 		failure: function(response) {
 			console.log(response);

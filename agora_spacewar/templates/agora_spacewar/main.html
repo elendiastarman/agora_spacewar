@@ -55,7 +55,7 @@
         So, without further ado, I'd like to present the game Spacewar! below and encourage you to play at least one game. By default, the two players are a Red human and a Blue userbot. The userbot player uses the code in two text boxes below the playing field to make its decisions; it is effectively a way for people to test their AI bot. There are also a grid of choices for picking players and a small table below the playing field with the controls for human players for either side. Just click the screen to start the game.
         </p>
 		
-		<div id="playfield"></div>
+		<div id="playfield" tabindex="1"></div>
 		
 		<table id="action-table">
 			<tr>
@@ -156,7 +156,7 @@ function userbot_getActions(gameInfo, botVars) {
             </div>
         </div>
 		
-		<p>As a quick side note, the user interface has been modified from the original here: <a href="http://play.starmaninnovations.com/spacewar">play.starmaninnovations.com/spacewar</a>. Now, if you played a game earlier, then below you'll see some statistics about the rounds you played in that game.</p>
+		<p>As a quick side note, the user interface has been modified from the original here: <a href="http://play.starmaninnovations.com/spacewar">play.starmaninnovations.com/spacewar</a>. Now, if you played a game earlier, then below you'll see some statistics about the rounds you played in that game. If not, then round statistics from the most recent game are shown.</p>
         
         <div id="round-stats" style="overflow:auto; max-height:25em; display:inline-block;"></div>
         

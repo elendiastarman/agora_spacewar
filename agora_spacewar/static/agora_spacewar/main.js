@@ -7,7 +7,6 @@ var accelerated = 0;
 		//console.log("main.js");
 		init();
 		//setRenderLoopInterval();
-		$('#playfield').focus();
 		$('#playfield').bind("keydown",handleInput);
 		$('#playfield').bind("keyup",handleInput);
 		$('#gravityCheck').on('change', function(){ gravityStrength = this.checked*5000; });
@@ -249,7 +248,11 @@ function init() {
         .attr("height", fieldHeight)
         .attr("fill", "rgb(200,200,200)")
         .attr("opacity", "0.5")
-        .on("click", function(){console.log(jQuery(this)); jQuery(this).parent().remove(); setRenderLoopInterval()});
+        .on("click", function(){
+            jQuery(this).parent().remove();
+            setRenderLoopInterval();
+            jQuery("#playfield").focus();
+        });
     d3.select("#clickstart").append("text")
         .attr("x", 400)
         .attr("y", 70)

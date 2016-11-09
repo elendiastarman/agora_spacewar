@@ -188,23 +188,63 @@ function userbot_getActions(gameInfo, botVars) {
         <ul>
             <li>The underlying database engine is PostgreSQL.</li>
             <li>Query execution time is currently limited to 10 seconds, and only <code>SELECT</code>, <code>INSERT</code>, and <code>UPDATE</code> operations are allowed.</li>
-            <li>There are currently six tables (all prepended with <code>agora_spacewar_</code>):
+            <li>There are currently five tables (all prepended with <code>agora_spacewar_</code>):
                 <ul>
-                    <li><code>player</code>, which has two columns: <code>id</code> (internal user id) and <code>uid</code> (SE chat id, auto-linked);</li>
-                    <li><code>username</code>, which has three columns: <code>id</code>, <code>name</code>, and <code>user_id (internal id)</code>;</li>
-                    <li><code>message</code>, which has eleven columns:
+                    <li><code>player</code>, which has eight columns:
                         <ul>
-                            <li><code>user_id</code> &ndash; the user who posted the message (internal id)</li>
-                            <li><code>mid</code> &ndash; message id (auto-linked)</li>
-                            <li><code>rid</code> &ndash; reply id, the message id of the message being replied to (if applicable)</li>
-                            <li><code>room</code> &ndash; the id of the chat room the message was in (240 for now)</li>
-                            <li><code>date</code> &ndash; YYYY-MM-DD format</li>
-                            <li><code>time</code> &ndash; somewhat coarse-grained, due to how SE chat displays message times</li>
-                            <li><code>content</code> &ndash; currently provided as raw HTML</li>
-                            <li><code>name</code> &ndash; the username of the user who posted the message at the time of posting</li>
-                            <li><code>stars</code> &ndash; how many stars the message has</li>
-                            <li><code>onebox</code> &ndash; whether or not the message has a onebox</li>
-                            <li><code>oneboxType</code> &ndash; post, message, youtube, etc...</li>
+                            <li><code>id</code> &ndash; internal database id</li>
+                            <li><code>username, email</code> &ndash; the username and email of the player, respectively</li>
+                            <li><code>numGames</code> &ndash; the number of games this player has played</li>
+                            <li><code>numWins, numLosses, numTies</code> &ndash; the number of games won, lost, and tied</li>
+                            <li><code>numMissiles</code> &ndash; the number of missiles this player has fired over the course of all games</li>
+                        </ul>
+                    </li>
+                    <li><code>game</code>, which has thirteen columns:
+                        <ul>
+                            <li><code>id</code> &ndash; internal database id</li>
+                            <li><code>frameStart, frameEnd</code> &ndash; the starting and ending frames of the game, respectively</li>
+                            <li><code>numRounds</code> &ndash; the number of rounds played</li>
+                            <li><code>p1wins, p2wins, ties</code> &ndash; the number of rounds won by Red, won by Blue, and tied, respectively</li>
+                            <li><code>p1missiles, p2missiles</code> &ndash; the number of missiles Red and Blue fired over the course of the game</li>
+                            <li><code>p1score, p2score</code> &ndash; the final scores of Red and Blue</li>
+                            <li><code>player1_id, player2_id</code> &ndash; internal database ids for who played Red and Blue</li>
+                        </ul>
+                    </li>
+                    <li><code>round</code>, which has eleven columns:
+                        <ul>
+                            <li><code>id</code> &ndash; internal database id</li>
+                            <li><code>frameStart, frameEnd</code> &ndash; the starting and ending frames of the round, respectively</li>
+                            <li><code>p1win, p2win, tie</code> &ndash; whether Red won, Blue won, or they tied, respectively</li>
+                            <li><code>p1missiles, p2missiles</code> &ndash; the number of missiles Red and Blue fired over the course of the round</li>
+                            <li><code>game_id</code> &ndash; internal database id for the game the round was in</li>
+                            <li><code>player1_id, player2_id</code> &ndash; internal database ids for who played Red and Blue</li>
+                        </ul>
+                    </li>
+                    <li><code>event</code>, which has twelve columns:
+                        <ul>
+                            <li><code>id</code> &ndash; internal database id</li>
+                            <li><code>type</code> &ndash; the type of event</li>
+                            <li><code>frame</code> &ndash; the frame the event occurred on</li>
+                            <li><code>status, score, way, shape, mid, why</code> &ndash; event-specific attributes (null when not applicable)</li>
+                            <li><code>mteam_id</code> &ndash; for missile events, internal database id for who fired the missile (null if not applicable)</li>
+                            <li><code>player_id</code> &ndash; internal database id for who caused the event (null if it was neither player)</li>
+                            <li><code>round_id</code> &ndash; internal database id for the round the event was in</li>
+                        </ul>
+                    </li>
+                    <li><code>achievement</code>, which has seven columns:
+                        <ul>
+                            <li><code>id</code> &ndash; internal database id</li>
+                            <li><code>frame</code> &ndash; the frame when the achievement was earned</li>
+                            <li><code>player_id</code> &ndash; internal database id for who got the achievement</li>
+                            <li><code>game_id</code> &ndash; internal database id for the game the achievement was in</li>
+                            <li><code>round_id</code> &ndash; internal database id for the round the achievement was in</li>
+                            <li><code>template_id</code> &ndash; internal database id for the kind of achievement</li>
+                        </ul>
+                    </li>
+                    <li><code>achievementtemplate</code>, which has three columns:
+                        <ul>
+                            <li><code>id</code> &ndash; internal database id</li>
+                            <li><code>name, description</code> &ndash; the name and description of the achievement</li>
                         </ul>
                     </li>
                 </ul>

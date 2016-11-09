@@ -51,7 +51,7 @@ WHERE R.game_id = X.id
 
 ORDER BY R.id;"""
 
-    return render(request, 'agora_spacewar/main.html', context_instance=context)
+    return render(request, 'agora_spacewar/main.html', context=context)
 
 @csrf_exempt
 def api_data_view(request, *args, **kwargs):

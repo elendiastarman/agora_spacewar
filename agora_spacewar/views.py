@@ -22,7 +22,7 @@ import subprocess
 # Create your views here.
 def main_view(request, *args, **kwargs):
 
-    context = RequestContext(request)
+    context = {}
 
     if sys.platform == 'win32':
         path = os.path.join(os.getcwd(),"agora_spacewar","static","agora_spacewar")

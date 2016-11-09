@@ -18,7 +18,7 @@
                 border-collapse: collapse;
                 border: 2px solid black;
             }
-            table td {
+            .sql-out td {
                 text-align: left;
             }
             .error { color: red; }
@@ -161,7 +161,7 @@ function userbot_getActions(gameInfo, botVars) {
 		
 		<p>As a quick side note, the user interface has been modified from the original here: <a href="http://play.starmaninnovations.com/spacewar">play.starmaninnovations.com/spacewar</a>. Now, if you played a game earlier, then below you'll see some statistics about the rounds you played in that game. If not, then round statistics from the most recent game are shown.</p>
         
-        <div id="round-stats" style="overflow:auto; max-height:25em; display:inline-block;"></div>
+        <div id="round-stats" style="overflow:auto; max-height:25em; display:inline-block;" class="sql-out"></div>
         
         <p>Below is the SQL query used to generate the above table. You may write arbitrary queries here, though only <code>SELECT</code>, <code>INSERT</code>, and <code>UPDATE</code> operations will work. Below this text box is a little documentation detailing the database schema.</p>
         <textarea id="sql">{{sql}}</textarea>
@@ -180,14 +180,14 @@ function userbot_getActions(gameInfo, botVars) {
         </p>
         
         <p id="qout">Query output:</p>
-        <div id="query-output" style="overflow:auto; max-height:25em; display:inline-block;"></div>
+        <div id="query-output" style="overflow:auto; max-height:25em; display:inline-block;" class="sql-out"></div>
         
         <!-- <p>Visualization area:</p>
         <div id="vizdiv">
             <svg style="border: 1px solid black" id="viz"></svg>
         </div> -->
         
-        <h2>Notes:</h2>
+        <p><strong>Database notes:</strong></p>
         <ul>
             <li>The underlying database engine is PostgreSQL.</li>
             <li>Query execution time is currently limited to 10 seconds, and only <code>SELECT</code>, <code>INSERT</code>, and <code>UPDATE</code> operations are allowed.</li>

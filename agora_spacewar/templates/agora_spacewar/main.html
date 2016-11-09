@@ -18,6 +18,9 @@
                 border-collapse: collapse;
                 border: 2px solid black;
             }
+            table td {
+                text-align: left;
+            }
             .error { color: red; }
             table.sortable th:not(.sorttable_sorted):not(.sorttable_sorted_reverse):not(.sorttable_nosort):after { 
                 content: " \25B4\25BE" 
@@ -188,7 +191,7 @@ function userbot_getActions(gameInfo, botVars) {
         <ul>
             <li>The underlying database engine is PostgreSQL.</li>
             <li>Query execution time is currently limited to 10 seconds, and only <code>SELECT</code>, <code>INSERT</code>, and <code>UPDATE</code> operations are allowed.</li>
-            <li>There are currently five tables (all prepended with <code>agora_spacewar_</code>):
+            <li>There are currently six tables (all prepended with <code>agora_spacewar_</code>):
                 <ul>
                     <li><code>player</code>, which has eight columns:
                         <ul>
